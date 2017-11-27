@@ -23,7 +23,7 @@ def labels():
             i+=1
     return filenames
 
-def labels_transfer()):
+def labels_transfer():
     labels = scipy.io.loadmat('imagelabels.mat')['labels'][0]
     files  = os.listdir(path+'/HR')
     filenames = []
@@ -41,8 +41,7 @@ def labels_transfer()):
 def data_loader(batchSize, threads):
 
     data_transforms = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        transforms.ToTensor()
     ])
     filenames = labels()
     images_lr = []
@@ -65,13 +64,14 @@ def data_loader(batchSize, threads):
 
     return data_loader
 
-def data_loader(batchSize, threads):
+def data_loader_test():
 
     data_transforms = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+        transforms.ToTensor()
     ])
     filenames = labels()
+    idxs = np.arange(0, 10)
+    np.random.shuffle(idxs)
     images_lr = []
     images_hr = []
     for file in filenames:
@@ -80,17 +80,8 @@ def data_loader(batchSize, threads):
         hr = data_transforms(imread(path+'HR/'+file)).numpy()
         images_lr.append(lr)
         images_hr.append(hr)
-
-    images_lr = np.asarray(images_lr)
-    images_hr = np.asarray(images_hr)
-
-    images_lr = torch.from_numpy((images_lr))
-    images_hr = torch.from_numpy((images_hr))
-
-    training_samples = utils_data.TensorDataset(images_lr, images_hr)
-    data_loader = utils_data.DataLoader(training_samples, batch_size=batchSize, shuffle=True, num_workers = threads)
-
-    return data_loader
+    
+    return [images_lr, images_hr]
 
 
 

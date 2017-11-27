@@ -5,10 +5,11 @@ import numpy as np
 import time, math
 import scipy.io as sio
 import matplotlib.pyplot as plt
+import data_loader
 
 parser = argparse.ArgumentParser(description="PyTorch SRResNet Test")
 parser.add_argument("--cuda", action="store_true", help="use cuda?")
-parser.add_argument("--model", default="model/model_epoch_415.pth", type=str, help="model path")
+parser.add_argument("--model", default="model/model_epoch_4.pth", type=str, help="model path")
 parser.add_argument("--image", default="butterfly_GT", type=str, help="image name")
 parser.add_argument("--scale", default=4, type=int, help="scale factor, Default: 4")
 
@@ -30,17 +31,12 @@ if cuda and not torch.cuda.is_available():
 
 model = torch.load(opt.model)["model"]
 
-im_gt = sio.loadmat("Set5/" + opt.image + ".mat")['im_gt']
-im_b = sio.loadmat("Set5/" + opt.image + ".mat")['im_b']
-im_l = sio.loadmat("Set5/" + opt.image + ".mat")['im_l']
-           
-im_gt = im_gt.astype(float).astype(np.uint8)
-im_b = im_b.astype(float).astype(np.uint8)
-im_l = im_l.astype(float).astype(np.uint8)      
-
-im_input = im_l.astype(np.float32).transpose(2,0,1)
+test_images = data_loader.data_loader_test()
+im_gt = test_images[1][0].transpose(2,1,0)
+im_b  = test_images[0][0].transpose(2,1,0)
+im_input = im_b
 im_input = im_input.reshape(1,im_input.shape[0],im_input.shape[1],im_input.shape[2])
-im_input = Variable(torch.from_numpy(im_input/255.).float())
+im_input = Variable(torch.from_numpy(im_input).float())
 
 if cuda:
     model = model.cuda()
