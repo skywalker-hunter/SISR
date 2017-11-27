@@ -3,6 +3,7 @@ import torch
 import math, random
 import torch.backends.cudnn as cudnn
 import torch.nn as nn
+import time
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
@@ -67,8 +68,8 @@ def main():
     model = Net()
     criterion = nn.MSELoss(size_average=False)
 
-    print("===> Setting GPU")
     if cuda:
+        print("===> Setting GPU")
         model = model.cuda()
         criterion = criterion.cuda()
         if opt.vgg_loss:
@@ -95,21 +96,23 @@ def main():
             
     print("===> Setting Optimizer")
     optimizer = optim.Adam(model.parameters(), lr=opt.lr)
-
-    print("===> Training")
+    f = open("training_details_%s"%(time.strftime("%Y%m%d-%H%M%S")),"w")
     for epoch in range(opt.start_epoch, opt.nEpochs + 1):
-        train(training_data_loader, optimizer, model, criterion, epoch)
+        t = time.time()
+        train(training_data_loader, optimizer, model, criterion, epoch,f)
+        print("Time taken in seconds : %.2f",time.time()-t)
         save_checkpoint(model, epoch)
+    f.close()
     
 def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 10"""
     lr = opt.lr * (0.1 ** (epoch // opt.step))
     return lr    
 
-def train(training_data_loader, optimizer, model, criterion, epoch):
+def train(training_data_loader, optimizer, model, criterion, epoch,f):
 
     lr = adjust_learning_rate(optimizer, epoch-1)
-    
+    total_loss = 0
     for param_group in optimizer.param_groups:
         param_group["lr"] = lr  
 
@@ -137,17 +140,20 @@ def train(training_data_loader, optimizer, model, criterion, epoch):
 
         if opt.vgg_loss:
             netContent.zero_grad()
-            content_loss.backward(retain_variables=True)
+            content_loss.backward(retain_graph=True)
         
         loss.backward()
 
         optimizer.step()
-        
+        total_loss+=loss.data[0]
         if iteration%100 == 0:
             if opt.vgg_loss:
                 print("===> Epoch[{}]({}/{}): Loss: {:.10f} Content_loss {:.10f}".format(epoch, iteration, len(training_data_loader), loss.data[0], content_loss.data[0]))
+                f.write("===> Epoch[%d](%d/%d): Loss: {:%.3f} Content_loss {:%.3f}\n"%(epoch, iteration, len(training_data_loader), loss.data[0], content_loss.data[0]))
             else:
                 print("===> Epoch[{}]({}/{}): Loss: {:.10f}".format(epoch, iteration, len(training_data_loader), loss.data[0]))
+    print("Avg Loss : %.2f"%(total_loss/iteration))
+    f.write("Epoch %d Avg Loss : %.2f\n"%(epoch, total_loss/iteration))
     
 def save_checkpoint(model, epoch):
     model_out_path = "model/" + "model_epoch_{}.pth".format(epoch)

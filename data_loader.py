@@ -70,6 +70,7 @@ def data_loader_test():
         transforms.ToTensor()
     ])
     filenames = labels()
+    np.random.seed(1)
     idxs = np.arange(0, len(filenames))
     np.random.shuffle(idxs)
     images_lr = []

@@ -28,7 +28,7 @@ cuda = opt.cuda
 if cuda and not torch.cuda.is_available():
     raise Exception("No GPU found, please run without --cuda")
 
-model = torch.load(opt.model)["model"]
+model = torch.load(opt.model,map_location=lambda storage, location: storage)["model"]
 
 test_images = data_loader.data_loader_test()
 for i in range(len(test_images[0])):
@@ -57,8 +57,8 @@ for i in range(len(test_images[0])):
     im_h[im_h>255.] = 255.            
     im_h = im_h.transpose(1,2,0)
 
-    print("Scale=",opt.scale)
     print("It takes {}s for processing".format(elapsed_time))
+    print("PSNR : %.2f",PSNR(im_h, im_gt.transpose(1,2,0)))
 
     fig = plt.figure()
     ax = plt.subplot("131")
