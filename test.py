@@ -9,8 +9,7 @@ import data_loader
 
 parser = argparse.ArgumentParser(description="PyTorch SRResNet Test")
 parser.add_argument("--cuda", action="store_true", help="use cuda?")
-parser.add_argument("--model", default="model/model_epoch_4.pth", type=str, help="model path")
-parser.add_argument("--image", default="butterfly_GT", type=str, help="image name")
+parser.add_argument("--model", default="model/model_epoch_10.pth", type=str, help="model path")
 parser.add_argument("--scale", default=4, type=int, help="scale factor, Default: 4")
 
 def PSNR(pred, gt, shave_border=0):
@@ -32,44 +31,45 @@ if cuda and not torch.cuda.is_available():
 model = torch.load(opt.model)["model"]
 
 test_images = data_loader.data_loader_test()
-im_gt = test_images[1][0].transpose(2,1,0)
-im_b  = test_images[0][0].transpose(2,1,0)
-im_input = im_b
-im_input = im_input.reshape(1,im_input.shape[0],im_input.shape[1],im_input.shape[2])
-im_input = Variable(torch.from_numpy(im_input).float())
+for i in range(len(test_images[0])):
+    im_gt = test_images[1][i]
+    im_b  = test_images[0][i]
+    im_input = im_b
+    im_input = im_input.reshape(1,im_input.shape[0],im_input.shape[1],im_input.shape[2])
+    im_input = Variable(torch.from_numpy(im_input).float())
 
-if cuda:
-    model = model.cuda()
-    im_input = im_input.cuda()
-else:
-    model = model.cpu()
-    
-start_time = time.time()
-out = model(im_input)
-elapsed_time = time.time() - start_time
+    if cuda:
+        model = model.cuda()
+        im_input = im_input.cuda()
+    else:
+        model = model.cpu()
+        
+    start_time = time.time()
+    out = model(im_input)
+    elapsed_time = time.time() - start_time
 
-out = out.cpu()
+    out = out.cpu()
 
-im_h = out.data[0].numpy().astype(np.float32)
+    im_h = out.data[0].numpy().astype(np.float32)
 
-im_h = im_h*255.
-im_h[im_h<0] = 0
-im_h[im_h>255.] = 255.            
-im_h = im_h.transpose(1,2,0)
+    im_h = im_h*255.
+    im_h[im_h<0] = 0
+    im_h[im_h>255.] = 255.            
+    im_h = im_h.transpose(1,2,0)
 
-print("Scale=",opt.scale)
-print("It takes {}s for processing".format(elapsed_time))
+    print("Scale=",opt.scale)
+    print("It takes {}s for processing".format(elapsed_time))
 
-fig = plt.figure()
-ax = plt.subplot("131")
-ax.imshow(im_gt)
-ax.set_title("GT")
+    fig = plt.figure()
+    ax = plt.subplot("131")
+    ax.imshow(im_gt.transpose(1,2,0))
+    ax.set_title("GT")
 
-ax = plt.subplot("132")
-ax.imshow(im_b)
-ax.set_title("Input(Bicubic)")
+    ax = plt.subplot("132")
+    ax.imshow(im_b.transpose(1,2,0))
+    ax.set_title("Input(Bicubic)")
 
-ax = plt.subplot("133")
-ax.imshow(im_h.astype(np.uint8))
-ax.set_title("Output(SRResNet)")
-plt.show()
+    ax = plt.subplot("133")
+    ax.imshow(im_h.astype(np.uint8))
+    ax.set_title("Output(SRResNet)")
+    plt.show()

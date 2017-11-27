@@ -70,11 +70,12 @@ def data_loader_test():
         transforms.ToTensor()
     ])
     filenames = labels()
-    idxs = np.arange(0, 10)
+    idxs = np.arange(0, len(filenames))
     np.random.shuffle(idxs)
     images_lr = []
     images_hr = []
-    for file in filenames:
+    for idx in idxs[:10]:
+        file = filenames[idx]
         if 'png' not in file:continue
         lr = data_transforms(imread(path+'LR/'+file)).numpy()
         hr = data_transforms(imread(path+'HR/'+file)).numpy()
