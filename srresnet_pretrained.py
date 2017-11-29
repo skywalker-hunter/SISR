@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 import math
 import torch.nn.init as init
+from torchvision import models
+
+original_model = models.resnet18(pretrained=True)
 
 class _Residual_Block(nn.Module):
     def __init__(self):
@@ -20,17 +23,11 @@ class _Residual_Block(nn.Module):
         output = torch.add(output,identity_data)
         return output 
 
-class Net(nn.Module):
+class Net_with_pretrained(nn.Module):
     def __init__(self):
-        super(Net, self).__init__()
-        
-        self.conv_input = nn.Conv2d(in_channels=3, out_channels=64, kernel_size=9, stride=1, padding=4, bias=False)
-        self.relu = nn.LeakyReLU(0.2, inplace=True)
-        
-        self.residual = self.make_layer(_Residual_Block, 6)
+        super(Net_with_pretrained, self).__init__()
 
-        self.conv_mid = nn.Conv2d(in_channels=64, out_channels=64, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn_mid = nn.BatchNorm2d(64)
+        self.features = nn.Sequential(*list(original_model.children())[:-2])
 
         self.upscale4x = nn.Sequential(
             nn.Conv2d(in_channels=64, out_channels=256, kernel_size=3, stride=1, padding=1, bias=False),
@@ -62,11 +59,7 @@ class Net(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-        out = self.relu(self.conv_input(x))
-        residual = out
-        out = self.residual(out)
-        out = self.bn_mid(self.conv_mid(out))
-        out = torch.add(out,residual)
+        out = self.features(x)
         out = self.upscale4x(out)
         out = self.conv_output(out)
         return out

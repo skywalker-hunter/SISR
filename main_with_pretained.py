@@ -8,17 +8,17 @@ import time
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from srresnet import Net
+from srresnet_pretrained import Net_with_pretrained
 import data_loader
 from torchvision import models
 import torch.utils.model_zoo as model_zoo
 
 # Training settings
 parser = argparse.ArgumentParser(description="PyTorch SRResNet")
-parser.add_argument("--batchSize", type=int, default=15, help="training batch size")
-parser.add_argument("--nEpochs", type=int, default=50, help="number of epochs to train for")
+parser.add_argument("--batchSize", type=int, default=5, help="training batch size")
+parser.add_argument("--nEpochs", type=int, default=5, help="number of epochs to train for")
 parser.add_argument("--lr", type=float, default=1e-4, help="Learning Rate. Default=1e-4")
-parser.add_argument("--step", type=int, default=50, help="Sets the learning rate to the initial LR decayed by momentum every n epochs, Default: n=500")
+parser.add_argument("--step", type=int, default=500, help="Sets the learning rate to the initial LR decayed by momentum every n epochs, Default: n=500")
 parser.add_argument("--cuda", action="store_true", help="Use cuda?")
 parser.add_argument("--resume", default="", type=str, help="Path to checkpoint (default: none)")
 parser.add_argument("--start-epoch", default=1, type=int, help="Manual epoch number (useful on restarts)")
@@ -66,8 +66,10 @@ def main():
         netContent = _content_model()
 
     print("===> Building model")
-    model = Net()
+    model = Net_with_pretrained()
     criterion = nn.MSELoss(size_average=False)
+    # for param in model.parameters():
+    #     param.requires_grad = False
 
     if cuda:
         print("===> Setting GPU")
@@ -94,10 +96,11 @@ def main():
             model.load_state_dict(weights['model'].state_dict())
         else:
             print("=> no model found at '{}'".format(opt.pretrained))
-            
+    
+
     print("===> Setting Optimizer")
     optimizer = optim.Adam(model.parameters(), lr=opt.lr)
-    f = open("training_details_%s"%(time.strftime("%m_%d-%H_%M")),"w")
+    f = open("training_details_%s"%(time.strftime("%Y%m%d-%H%M%S")),"w")
     for epoch in range(opt.start_epoch, opt.nEpochs + 1):
         t = time.time()
         train(training_data_loader, optimizer, model, criterion, epoch,f)
@@ -111,6 +114,8 @@ def adjust_learning_rate(optimizer, epoch):
     return lr    
 
 def train(training_data_loader, optimizer, model, criterion, epoch,f):
+    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
 
     lr = adjust_learning_rate(optimizer, epoch-1)
     total_loss = 0
@@ -132,8 +137,8 @@ def train(training_data_loader, optimizer, model, criterion, epoch,f):
         loss = criterion(output, target)
 
         if opt.vgg_loss:
-            content_input  = netContent(output)
-            content_target = netContent(target)
+            content_input = netContent(torch.div(output-normalize['mean'],normalize['std']))
+            content_target = netContent(torch.div(target-normalize['mean'],normalize['std']))
             content_target = content_target.detach()
             content_loss = criterion(content_input, content_target)
         
