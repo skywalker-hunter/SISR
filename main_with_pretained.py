@@ -8,7 +8,7 @@ import time
 import torch.optim as optim
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from srresnet_pretrained import Net_with_pretrained
+from srresnet_pretrained import Net2
 import data_loader
 from torchvision import models
 import torch.utils.model_zoo as model_zoo
@@ -66,10 +66,8 @@ def main():
         netContent = _content_model()
 
     print("===> Building model")
-    model = Net_with_pretrained()
+    model = Net2()
     criterion = nn.MSELoss(size_average=False)
-    # for param in model.parameters():
-    #     param.requires_grad = False
 
     if cuda:
         print("===> Setting GPU")
@@ -101,6 +99,7 @@ def main():
     print("===> Setting Optimizer")
     optimizer = optim.Adam(model.parameters(), lr=opt.lr)
     f = open("training_details_%s"%(time.strftime("%Y%m%d-%H%M%S")),"w")
+    
     for epoch in range(opt.start_epoch, opt.nEpochs + 1):
         t = time.time()
         train(training_data_loader, optimizer, model, criterion, epoch,f)
@@ -113,9 +112,7 @@ def adjust_learning_rate(optimizer, epoch):
     lr = opt.lr * (0.1 ** (epoch // opt.step))
     return lr    
 
-def train(training_data_loader, optimizer, model, criterion, epoch,f):
-    normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
-                                 std=[0.229, 0.224, 0.225])
+def train(training_data_loader, optimizer, model, criterion, epoch, f):
 
     lr = adjust_learning_rate(optimizer, epoch-1)
     total_loss = 0
@@ -127,14 +124,15 @@ def train(training_data_loader, optimizer, model, criterion, epoch,f):
 
     for iteration, batch in enumerate(training_data_loader, 1):
 
-        input, target = Variable(batch[0]), Variable(batch[1], requires_grad=False)
+        input, transfer, target = Variable(batch[0]), Variable(batch[1]), Variable(batch[2], requires_grad=False)
 
         if opt.cuda:
             input = input.cuda()
             target = target.cuda()
-        
-        output = model(input)
-        loss = criterion(output, target)
+            transfer = transfer.cuda()
+
+        output  = model(input, transfer)
+        loss    = criterion(output, target)
 
         if opt.vgg_loss:
             content_input = netContent(torch.div(output-normalize['mean'],normalize['std']))
